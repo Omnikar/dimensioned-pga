@@ -11,6 +11,8 @@
 //!
 //! Be mindful of operator precedence when using these overloads. Additionally, due to the orphan rule, these overloads do not support scalars on the left-hand side.
 
+pub use uom;
+
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 use uom::si::{self, f64::*};
@@ -20,10 +22,8 @@ type Quantity<D> = uom::si::Quantity<D, uom::si::SI<f64>, f64>;
 
 /// Trait for values that can be components in multivectors
 /// Due to the properties of e0, the full requirement for T to be a component of a multivector are:
-/// ```rust
-/// T: Component + Mul<Length>,
-/// E0<T>: Component,
-/// ```
+/// - `T: Component + Mul<Length>`
+/// - `E0<T>: Component`
 pub trait Component:
     Copy + Sized + Default + Debug + Add<Output = Self> + Sub<Output = Self> + Neg<Output = Self>
 {
