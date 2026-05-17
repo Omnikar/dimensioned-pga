@@ -104,6 +104,7 @@ fn generate_arith_impls(out: &mut File, name: &str, blades: &[u8]) -> Result<()>
         )?;
         writeln!(out, "where\n    E0<T>: Component,\n{{")?;
         writeln!(out, "    type Output = Self;")?;
+        writeln!(out, "    #[inline]")?;
         writeln!(out, "    fn {fn_name}(self, rhs: Self) -> Self {{")?;
         writeln!(out, "        Self {{")?;
         for &blade in blades {
@@ -119,6 +120,7 @@ fn generate_arith_impls(out: &mut File, name: &str, blades: &[u8]) -> Result<()>
     )?;
     writeln!(out, "where\n    E0<T>: Component,\n{{")?;
     writeln!(out, "    type Output = Self;")?;
+    writeln!(out, "    #[inline]")?;
     writeln!(out, "    fn neg(self) -> Self {{")?;
     writeln!(out, "        Self {{")?;
     for &blade in blades {
@@ -139,6 +141,7 @@ where
     E0<<T as ::std::ops::Div<U>>::Output>: Component,
 {{
     type Output = {name}<<T as ::std::ops::Div<U>>::Output>;
+    #[inline]
     fn div(self, rhs: Scalar<U>) -> Self::Output {{
         Self::Output {{
 "
@@ -158,6 +161,7 @@ fn generate_reverse_impl(out: &mut File, name: &str, blades: &[u8]) -> Result<()
         "impl<T: Component + Mul<Length>> Reverse for {name}<T>"
     )?;
     writeln!(out, "where\n    E0<T>: Component,\n{{")?;
+    writeln!(out, "    #[inline]")?;
     writeln!(out, "    fn reverse(self) -> Self {{")?;
     writeln!(out, "        Self {{")?;
     for &blade in blades {
@@ -176,6 +180,7 @@ where
     E0<T>: Component,
 {{
     type Output = Self;
+    #[inline]
     fn not(self) -> Self::Output {{
         Reverse::reverse(self)
     }}
@@ -198,6 +203,7 @@ where
     Quantity<D2>: Add<Output = Quantity<D2>>,
 {{
     type Output = Quantity<D>;
+    #[inline]
     fn norm(self) -> Quantity<D> {{
         Quantity::<D> {{
             dimension: ::std::marker::PhantomData,
@@ -205,6 +211,7 @@ where
             value: self.normsq().value.sqrt(),
         }}
     }}
+    #[inline]
     fn normsq(self) -> Quantity<D2> {{"
     )?;
 
@@ -238,6 +245,7 @@ fn generate_conversion_impl(
         "impl<T: Component + Mul<Length>> ::std::convert::From<{name_in}<T>> for {name_out}<T>"
     )?;
     writeln!(out, "where\n    E0<T>: Component,\n{{")?;
+    writeln!(out, "    #[inline]")?;
     writeln!(out, "    fn from(value: {name_in}<T>) -> Self {{")?;
     writeln!(out, "        Self {{")?;
     for &blade_out in blades_out {
@@ -264,6 +272,7 @@ where
     E0<T>: Component + ::std::ops::Div<Output = Ratio> + ::std::ops::Mul<f64, Output = E0<T>>,
 {{
     type Values = [f64; {}];
+    #[inline]
     fn into_values(self, _unit: T, _ideal_unit: E0<T>) -> Self::Values {{
         [",
         blades.len()
@@ -280,6 +289,7 @@ where
     }
     writeln!(out, "        ]\n    }}")?;
 
+    writeln!(out, "    #[inline]")?;
     writeln!(
         out,
         "    fn from_values(values: Self::Values, _unit: T, _ideal_unit: E0<T>) -> Self {{"
@@ -402,6 +412,7 @@ where
 {{",
     )?;
     writeln!(out, "    type Output = {out_name}<{}>;", product.out_type)?;
+    writeln!(out, "    #[inline]")?;
     writeln!(
         out,
         "    fn {}(self, rhs: {rhs_name}<U>) -> Self::Output {{",
