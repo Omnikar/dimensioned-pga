@@ -15,7 +15,10 @@ pub use uom;
 
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Neg, Sub};
-use uom::si::{self, f64::*};
+use uom::si::{
+    self,
+    f64::{Angle, Length, Ratio},
+};
 use uom::typenum::Prod;
 
 type Quantity<D> = uom::si::Quantity<D, uom::si::SI<f64>, f64>;
@@ -49,7 +52,21 @@ mod generated {
     #![allow(unused_parens)]
     #![allow(clippy::suspicious_arithmetic_impl)]
     #![allow(clippy::used_underscore_binding)]
-    use super::*;
+    #![allow(clippy::no_effect_underscore_binding)]
+    #![allow(clippy::unnecessary_struct_initialization)]
+    #![allow(clippy::default_trait_access)]
+    use super::{Component, ConvertValues, E0, Norm, Quantity, Reverse, Scalar};
+    use std::{
+        fmt::Debug,
+        ops::{Add, Mul},
+    };
+    use uom::{
+        si::{
+            self,
+            f64::{Length, LinearNumberDensity, Ratio},
+        },
+        typenum::Prod,
+    };
     include!(concat!(env!("OUT_DIR"), "/ga_impls.rs"));
 }
 pub use generated::*;
@@ -61,11 +78,14 @@ where
     E0<T>: Component,
 {
     type Values;
+    #[must_use]
     fn into_values(self, unit: T, ideal_unit: E0<T>) -> Self::Values;
+    #[must_use]
     fn from_values(values: Self::Values, unit: T, ideal_unit: E0<T>) -> Self;
 }
 
 pub trait Reverse {
+    #[must_use]
     fn reverse(self) -> Self;
 }
 
@@ -74,12 +94,15 @@ where
     Self::Output: Mul,
 {
     type Output;
+    #[must_use]
     fn norm(self) -> Self::Output;
+    #[must_use]
     fn normsq(self) -> Prod<Self::Output, Self::Output>;
 }
 
 pub trait Normalize {
     type Output;
+    #[must_use]
     fn normalized(self) -> Self::Output;
 }
 impl<T: Sized + Copy + Norm + Div<<T as Norm>::Output>> Normalize for T {
@@ -91,6 +114,7 @@ impl<T: Sized + Copy + Norm + Div<<T as Norm>::Output>> Normalize for T {
 
 pub trait SandwichProduct<Rhs> {
     type Output;
+    #[must_use]
     fn sandwich_product(self, rhs: Rhs) -> Self::Output;
 }
 
@@ -131,6 +155,7 @@ where
 
 pub trait Exponential {
     type Output;
+    #[must_use]
     fn exp(self) -> Self::Output;
 }
 
@@ -141,6 +166,7 @@ where
 {
     type Output = Motor<Ratio>;
 
+    // Formula from https://bivector.net/PGAdyn.pdf, page 18
     fn exp(self) -> Self::Output {
         let bv = Bivector::<Ratio> {
             e01: self.e01.into(),
@@ -150,8 +176,8 @@ where
             e13: self.e13.into(),
             e23: self.e23.into(),
         };
-        let l = bv.normsq();
-        if l == Ratio::from(0.0) {
+        let normsq = bv.normsq();
+        if normsq == Ratio::from(0.0) {
             return Motor {
                 e: 1.0.into(),
                 e01: bv.e01,
@@ -161,19 +187,19 @@ where
             };
         }
         let m = bv.e01 * bv.e23 - bv.e02 * bv.e13 + bv.e03 * bv.e12;
-        let a: Angle = l.sqrt().into();
-        let c = a.cos();
-        let s = a.sin() / a;
-        let t = m / l * (c - s);
+        let angle: Angle = normsq.sqrt().into();
+        let cos = angle.cos();
+        let sinc = angle.sin() / angle;
+        let t = m / normsq * (cos - sinc);
         Motor {
-            e: c,
-            e01: s * bv.e01 + t * bv.e23,
-            e02: s * bv.e02 - t * bv.e13,
-            e03: s * bv.e03 + t * bv.e12,
-            e12: s * bv.e12,
-            e13: s * bv.e13,
-            e23: s * bv.e23,
-            e0123: m * s,
+            e: cos,
+            e01: sinc * bv.e01 + t * bv.e23,
+            e02: sinc * bv.e02 - t * bv.e13,
+            e03: sinc * bv.e03 + t * bv.e12,
+            e12: sinc * bv.e12,
+            e13: sinc * bv.e13,
+            e23: sinc * bv.e23,
+            e0123: m * sinc,
         }
     }
 }
@@ -221,6 +247,8 @@ where
 
 impl Motor<Ratio> {
     /// The identity motor, representing no transformation
+    #[inline]
+    #[must_use]
     pub fn id() -> Self {
         Self {
             e: 1.0.into(),

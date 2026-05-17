@@ -132,13 +132,11 @@ fn generate_arith_impls(out: &mut File, name: &str, blades: &[u8]) -> Result<()>
         "\
 impl<T, U> std::ops::Div<Scalar<U>> for {name}<T>
 where
-    T: Component + Mul<Length>,
+    T: Component + Mul<Length> + ::std::ops::Div<U>,
     U: Component + Mul<Length>,
-    E0<T>: Component,
-    T: ::std::ops::Div<U>,
+    E0<T>: Component + ::std::ops::Div<U, Output = E0<<T as ::std::ops::Div<U>>::Output>>,
     <T as ::std::ops::Div<U>>::Output: Component + Mul<Length>,
     E0<<T as ::std::ops::Div<U>>::Output>: Component,
-    E0<T>: ::std::ops::Div<U, Output = E0<<T as ::std::ops::Div<U>>::Output>>,
 {{
     type Output = {name}<<T as ::std::ops::Div<U>>::Output>;
     fn div(self, rhs: Scalar<U>) -> Self::Output {{
@@ -219,7 +217,7 @@ where
             format!("self.{bname} * self.{bname}")
         })
         .reduce(|a, b| format!("{a}\n        + {b}"))
-        .unwrap_or("Default::default()".into());
+        .unwrap_or_else(|| "Default::default()".into());
     writeln!(out, "        {expr}")?;
 
     writeln!(out, "    }}\n}}")?;
@@ -323,19 +321,20 @@ fn generate_ga_product<'a>(
 
     writeln!(out, "pub trait {trait_name}<Rhs> {{")?;
     writeln!(out, "    type Output;")?;
+    writeln!(out, "    #[must_use]")?;
     writeln!(out, "    fn {func_name}(self, rhs: Rhs) -> Self::Output;")?;
     writeln!(out, "}}")?;
 
     let table: Vec<Vec<u8>> = load_cayley_table(func_name)?;
     let mut terms = <[Vec<(bool, u8, u8)>; 16]>::default();
-    for (i, row) in table.into_iter().enumerate() {
-        for (j, signed_blade) in row.into_iter().enumerate() {
+    for (i, row) in (0u8..).zip(table) {
+        for (j, signed_blade) in (0u8..).zip(row) {
             if signed_blade == 32 {
                 continue;
             }
             let sign = (signed_blade >> 4) & 1 == 1;
             let blade = signed_blade & 15;
-            terms[blade as usize].push((sign, i as u8, j as u8));
+            terms[blade as usize].push((sign, i, j));
         }
     }
 
@@ -393,16 +392,13 @@ fn generate_ga_product_impl<'a>(
         out,
         "\
 where
-    T: Component + Mul<U> + Mul<Length>,
+    T: Component + Mul<U> + Mul<Length> + Mul<E0<U>, Output = E0<Prod<T, U>>>,
     U: Component + Mul<Length>,
-    E0<T>: Component,
+    E0<T>: Component + Mul<U, Output = E0<Prod<T, U>>> + Mul<E0<U>, Output = E0<E0<Prod<T, U>>>>,
     E0<U>: Component,
     Prod<T, U>: Component + Mul<Length>,
     E0<Prod<T, U>>: Component + Mul<Length>,
-    T: Mul<E0<U>, Output = E0<Prod<T, U>>>,
-    E0<T>: Mul<U, Output = E0<Prod<T, U>>>,
     E0<E0<Prod<T, U>>>: Component,
-    E0<T>: Mul<E0<U>, Output = E0<E0<Prod<T, U>>>>,
 {{",
     )?;
     writeln!(out, "    type Output = {out_name}<{}>;", product.out_type)?;
@@ -421,10 +417,10 @@ where
     let out_blades = structs.get(&out_name).unwrap();
     for &out_blade in out_blades {
         let name = blade_name(out_blade);
-        if out_name != "Scalar" {
-            write!(out, "            {name}: ")?;
-        } else {
+        if out_name == "Scalar" {
             write!(out, "        ")?;
+        } else {
+            write!(out, "            {name}: ")?;
         }
 
         let terms = &product.terms[out_blade as usize];
@@ -436,20 +432,20 @@ where
                 format!(
                     "({}self{} * rhs{})",
                     if sign { "-" } else { "" },
-                    if lhs_name != "Scalar" {
+                    if lhs_name == "Scalar" {
+                        String::new()
+                    } else {
                         format!(".{}", blade_name(lhs))
-                    } else {
-                        "".into()
                     },
-                    if rhs_name != "Scalar" {
-                        format!(".{}", blade_name(rhs))
+                    if rhs_name == "Scalar" {
+                        String::new()
                     } else {
-                        "".into()
+                        format!(".{}", blade_name(rhs))
                     },
                 )
             })
             .reduce(|a, b| format!("{a} + {b}"))
-            .unwrap_or("Default::default()".into());
+            .unwrap_or_else(|| "Default::default()".into());
         write!(out, "{expr}")?;
         if out_name != "Scalar" {
             write!(out, ",")?;
@@ -481,6 +477,7 @@ fn generate_blade_constants(out: &mut File, structs: &GaStructs) -> Result<()> {
     writeln!(out, "/// Dimensionless values for all basis blades")?;
     writeln!(out, "pub mod blades {{")?;
     writeln!(out, "    #![allow(non_upper_case_globals)]")?;
+    writeln!(out, "    #[allow(clippy::wildcard_imports)]")?;
     writeln!(out, "    use super::*;")?;
     for blade in 0..32 {
         let bname = blade_name(blade);
