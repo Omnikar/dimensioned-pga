@@ -204,6 +204,20 @@ where
     }
 }
 
+impl<T> Bivector<T>
+where
+    T: Component + Mul<Length> + Into<Ratio>,
+    E0<T>: Component + Into<Length>,
+    Self: Mul<f64, Output = Self> + Neg<Output = Self>,
+{
+    /// Convenience method for exp(-self/2) to turn this bivector into a motor
+    #[inline]
+    #[must_use]
+    pub fn motor(self) -> Motor<Ratio> {
+        (-self * 0.5).exp()
+    }
+}
+
 /*
 trait Dual {
     type Output;
