@@ -132,7 +132,7 @@ fn generate_arith_impls(out: &mut File, name: &str, blades: &[u8]) -> Result<()>
     writeln!(
         out,
         "\
-impl<T, U> std::ops::Div<Scalar<U>> for {name}<T>
+impl<T, U> ::std::ops::Div<Scalar<U>> for {name}<T>
 where
     T: Component + Mul<Length> + ::std::ops::Div<U>,
     U: Component + Mul<Length>,
@@ -151,6 +151,20 @@ where
         writeln!(out, "            {bname}: self.{bname} / rhs,")?;
     }
     writeln!(out, "        }}\n    }}\n}}")?;
+
+    writeln!(
+        out,
+        "\
+impl<T> ::std::iter::Sum for {name}<T>
+where
+    T: Component + Mul<Length>,
+    E0<T>: Component,
+{{
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {{
+        iter.reduce(::std::ops::Add::add).unwrap_or_default()
+    }}
+}}"
+    )?;
 
     Ok(())
 }
@@ -521,18 +535,18 @@ fn generate_blade_constants(out: &mut File, structs: &GaStructs) -> Result<()> {
             out,
             "        \
         let _zero = {zero_type} {{
-            dimension: std::marker::PhantomData,
-            units: std::marker::PhantomData,
+            dimension: ::std::marker::PhantomData,
+            units: ::std::marker::PhantomData,
             value: 0.0,
         }};
         let _ideal_zero = {ideal_zero_type} {{
-            dimension: std::marker::PhantomData,
-            units: std::marker::PhantomData,
+            dimension: ::std::marker::PhantomData,
+            units: ::std::marker::PhantomData,
             value: 0.0,
         }};
         let one = Ratio {{
-            dimension: std::marker::PhantomData,
-            units: std::marker::PhantomData,
+            dimension: ::std::marker::PhantomData,
+            units: ::std::marker::PhantomData,
             value: 1.0,
         }};
         {type_name} {{"
