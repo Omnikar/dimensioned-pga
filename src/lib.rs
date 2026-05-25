@@ -153,6 +153,13 @@ where
     }
 }
 
+impl std::iter::Product for Motor<Ratio> {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(GeometricProduct::geometric_product)
+            .unwrap_or_else(|| Motor::id())
+    }
+}
+
 pub trait Exponential {
     type Output;
     #[must_use]
