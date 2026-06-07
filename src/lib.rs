@@ -11,6 +11,8 @@
 //!
 //! Be mindful of operator precedence when using these overloads. Additionally, due to the orphan rule, these overloads do not support scalars on the left-hand side.
 
+#![warn(clippy::pedantic)]
+
 pub use uom;
 
 use std::fmt::Debug;
